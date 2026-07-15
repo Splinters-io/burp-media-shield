@@ -22,6 +22,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -73,11 +74,11 @@ public final class ShieldSettingsPanel extends JPanel {
         panel.add(title);
         panel.add(Box.createVerticalStrut(4));
 
-        JLabel blurb = new JLabel("<html>Replaces images / video / audio with bright-orange "
-                + "placeholders in every view an analyst looks at, while Proxy history keeps the "
-                + "original bytes and full metadata for your findings.</html>");
-        blurb.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(blurb);
+        // NB: Burp's look-and-feel disables HTML in Swing labels, so all copy here is plain
+        // text laid out as separate lines; emphasis comes from bold fonts, not markup.
+        panel.add(plainLabel("Replaces images / video / audio with bright-orange placeholders", false));
+        panel.add(plainLabel("in every view an analyst looks at. Proxy history keeps the original", false));
+        panel.add(plainLabel("bytes and full metadata for your findings.", false));
         panel.add(Box.createVerticalStrut(10));
 
         panel.add(checkbox("Shield ENABLED (master switch)", cfg.enabled(),
@@ -92,12 +93,11 @@ public final class ShieldSettingsPanel extends JPanel {
                 cfg.harvestMetadata(), v -> configHolder.update(c -> c.withHarvestMetadata(v))));
 
         panel.add(Box.createVerticalStrut(8));
-        JLabel retentionWarn = new JLabel("<html><b>Data retention:</b> by default original media "
-                + "bytes are kept in Proxy history and <u>written to the Burp project file on disk</u> "
-                + "(not rendered, but forensically present). Enable the option below for material that "
-                + "must never touch disk.</html>");
-        retentionWarn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(retentionWarn);
+        panel.add(plainLabel("⚠  DATA RETENTION", true));
+        panel.add(plainLabel("By default, original media bytes are kept in Proxy history and", false));
+        panel.add(plainLabel("WRITTEN TO THE BURP PROJECT FILE ON DISK (not rendered, but", false));
+        panel.add(plainLabel("forensically present). Enable No-Retention Mode for material that", false));
+        panel.add(plainLabel("must never touch disk.", false));
         panel.add(checkbox("NO-RETENTION MODE — also scrub originals from history (keep text metadata only)",
                 cfg.scrubHistory(), v -> configHolder.update(c -> c.withScrubHistory(v))));
 
@@ -126,6 +126,7 @@ public final class ShieldSettingsPanel extends JPanel {
 
         panel.add(Box.createVerticalStrut(10));
         statsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        statsLabel.setFont(statsLabel.getFont().deriveFont(Font.BOLD));
         panel.add(statsLabel);
 
         return panel;
@@ -166,7 +167,7 @@ public final class ShieldSettingsPanel extends JPanel {
 
     private void updateStats() {
         statsLabel.setText(String.format(
-                "<html><b>%d</b> media items shielded &nbsp;|&nbsp; <b>%d</b> metadata records captured</html>",
+                "Shielded: %d      |      Metadata records captured: %d",
                 store.shieldedCount(), store.recordedCount()));
     }
 
@@ -196,6 +197,16 @@ public final class ShieldSettingsPanel extends JPanel {
     private JLabel leftLabel(String text) {
         JLabel l = new JLabel(text);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
+    }
+
+    /** Plain-text label (no HTML — Burp disables HTML rendering in labels); bold for emphasis. */
+    private JLabel plainLabel(String text, boolean bold) {
+        JLabel l = new JLabel(text);
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        if (bold) {
+            l.setFont(l.getFont().deriveFont(Font.BOLD));
+        }
         return l;
     }
 
