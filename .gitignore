@@ -1,0 +1,26 @@
+# Build output
+build/
+.deps/
+.gradle/
+out/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# NEVER commit engagement artifacts or Burp state (may contain retained media bytes)
+*.burp
+*.zip
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.mp4
+*.mov
+*.webm
+*.mp3

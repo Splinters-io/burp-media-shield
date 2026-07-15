@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    // Produces a single self-contained .jar (Burp loads one jar; deps must be bundled).
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'io.splinters'
+version = '1.0.0'
+
+java {
+    // Burp ships its own JRE (17+ on current releases). Target 17 for broad compatibility.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Montoya API is provided by Burp at runtime -> compileOnly, never bundled.
+    // Bump this line to match (or stay below) your Burp release if compilation complains.
+    compileOnly 'net.portswigger.burp.extensions:montoya-api:2026.4'
+
+    // Battle-tested metadata reader: dimensions, EXIF/XMP/IPTC, GPS, file-type sniffing.
+    // Bundled into the fat jar so no runtime install is needed.
+    implementation 'com.drewnoakes:metadata-extractor:2.19.0'
+}
+
+shadowJar {
+    archiveClassifier.set('')            // output: build/libs/burp-media-shield-1.0.0.jar
+    // Relocate the bundled library to avoid clashing with anything Burp/other extensions load.
+    relocate 'com.drew', 'io.splinters.mediashield.shaded.drew'
+    relocate 'com.adobe.internal.xmp', 'io.splinters.mediashield.shaded.xmp'
+}
+
+// `gradle build` should yield the loadable fat jar.
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}
