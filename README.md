@@ -100,7 +100,10 @@ that never becomes its own response: `data:` URIs, inline SVG, and `poster` fram
 | Excluded hosts | empty | hosts left entirely untouched (e.g. noisy analytics pixels) |
 
 The tab also shows live counters and a **table of harvested media** (URL, declared vs. sniffed type,
-size, dimensions, GPS, SHA-256) — your finding-writing surface, no pixels involved.
+size, dimensions, GPS, SHA-256) — your finding-writing surface, no pixels involved. **Export CSV…**
+writes the full capture (incl. MD5, type-mismatch flag, notable tags and the raw EXIF/XMP dump) to
+a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises CSV/formula injection
+(target-controlled URLs and EXIF can't execute when the file is opened in a spreadsheet).
 
 ---
 

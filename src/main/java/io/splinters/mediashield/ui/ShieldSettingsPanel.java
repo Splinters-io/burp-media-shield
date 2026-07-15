@@ -2,6 +2,7 @@ package io.splinters.mediashield.ui;
 
 import io.splinters.mediashield.config.ConfigHolder;
 import io.splinters.mediashield.config.ShieldConfig;
+import io.splinters.mediashield.export.CsvExporter;
 import io.splinters.mediashield.metadata.MediaMetadata;
 import io.splinters.mediashield.metadata.MetadataStore;
 
@@ -10,7 +11,9 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -23,6 +26,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -144,12 +150,15 @@ public final class ShieldSettingsPanel extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(e -> refreshTable());
+        JButton export = new JButton("Export CSV…");
+        export.addActionListener(e -> exportCsv());
         JButton clear = new JButton("Clear captured");
         clear.addActionListener(e -> {
             store.clear();
             refreshTable();
         });
         buttons.add(refresh);
+        buttons.add(export);
         buttons.add(clear);
         wrap.add(buttons, BorderLayout.SOUTH);
         return wrap;
@@ -169,6 +178,40 @@ public final class ShieldSettingsPanel extends JPanel {
         statsLabel.setText(String.format(
                 "Shielded: %d      |      Metadata records captured: %d",
                 store.shieldedCount(), store.recordedCount()));
+    }
+
+    private void exportCsv() {
+        List<MediaMetadata> snapshot = store.snapshot();
+        if (snapshot.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No metadata captured yet.",
+                    "Media Shield", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export media metadata to CSV");
+        chooser.setSelectedFile(new File("media-metadata.csv"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".csv")) {
+            file = new File(file.getParentFile(), file.getName() + ".csv");
+        }
+
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            // UTF-8 BOM so Excel opens the file with the right encoding.
+            out.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+            out.write(CsvExporter.toCsv(snapshot).getBytes(StandardCharsets.UTF_8));
+            JOptionPane.showMessageDialog(this,
+                    "Exported " + snapshot.size() + " records to:\n" + file.getAbsolutePath(),
+                    "Media Shield", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Export failed: " + ex.getMessage(),
+                    "Media Shield", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void refreshTable() {
