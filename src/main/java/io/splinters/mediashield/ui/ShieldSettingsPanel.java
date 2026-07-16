@@ -95,6 +95,8 @@ public final class ShieldSettingsPanel extends JPanel {
                 cfg.blindOtherTools(), v -> configHolder.update(c -> c.withBlindOtherTools(v))));
         panel.add(checkbox("Neutralise inline data: URIs & inline SVG in HTML/CSS",
                 cfg.rewriteInlineMedia(), v -> configHolder.update(c -> c.withRewriteInlineMedia(v))));
+        panel.add(checkbox("Blind media in WebSocket frames (binary + base64-in-JSON, server→client)",
+                cfg.blindWebSockets(), v -> configHolder.update(c -> c.withBlindWebSockets(v))));
         panel.add(checkbox("Harvest metadata (EXIF / GPS / dimensions / hashes)",
                 cfg.harvestMetadata(), v -> configHolder.update(c -> c.withHarvestMetadata(v))));
 

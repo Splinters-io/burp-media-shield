@@ -16,6 +16,7 @@ public final class ShieldConfig {
     private final boolean blindProxyBrowser;   // rewrite client-facing copy in the Proxy
     private final boolean blindOtherTools;     // belt-and-braces: Repeater/Logger/etc. render paths
     private final boolean rewriteInlineMedia;  // strip data: URIs / inline svg in html & css
+    private final boolean blindWebSockets;     // blind media in proxied WebSocket frames
     private final boolean harvestMetadata;     // extract EXIF/GPS/dimensions/hashes
     private final boolean scrubHistory;        // ALSO replace the logged copy -> raw bytes never persisted
     private final Set<String> excludedHosts;   // hosts to leave untouched (noise, e.g. analytics pixels)
@@ -24,6 +25,7 @@ public final class ShieldConfig {
                          boolean blindProxyBrowser,
                          boolean blindOtherTools,
                          boolean rewriteInlineMedia,
+                         boolean blindWebSockets,
                          boolean harvestMetadata,
                          boolean scrubHistory,
                          Set<String> excludedHosts) {
@@ -31,6 +33,7 @@ public final class ShieldConfig {
         this.blindProxyBrowser = blindProxyBrowser;
         this.blindOtherTools = blindOtherTools;
         this.rewriteInlineMedia = rewriteInlineMedia;
+        this.blindWebSockets = blindWebSockets;
         this.harvestMetadata = harvestMetadata;
         this.scrubHistory = scrubHistory;
         this.excludedHosts = Collections.unmodifiableSet(new LinkedHashSet<>(excludedHosts));
@@ -42,13 +45,14 @@ public final class ShieldConfig {
      * for material that must never touch disk.
      */
     public static ShieldConfig defaults() {
-        return new ShieldConfig(true, true, true, true, true, false, new LinkedHashSet<>());
+        return new ShieldConfig(true, true, true, true, true, true, false, new LinkedHashSet<>());
     }
 
     public boolean enabled() { return enabled; }
     public boolean blindProxyBrowser() { return blindProxyBrowser; }
     public boolean blindOtherTools() { return blindOtherTools; }
     public boolean rewriteInlineMedia() { return rewriteInlineMedia; }
+    public boolean blindWebSockets() { return blindWebSockets; }
     public boolean harvestMetadata() { return harvestMetadata; }
     public boolean scrubHistory() { return scrubHistory; }
     public Set<String> excludedHosts() { return excludedHosts; }
@@ -69,30 +73,34 @@ public final class ShieldConfig {
     }
 
     public ShieldConfig withEnabled(boolean value) {
-        return new ShieldConfig(value, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, harvestMetadata, scrubHistory, excludedHosts);
+        return new ShieldConfig(value, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, blindWebSockets, harvestMetadata, scrubHistory, excludedHosts);
     }
 
     public ShieldConfig withBlindProxyBrowser(boolean value) {
-        return new ShieldConfig(enabled, value, blindOtherTools, rewriteInlineMedia, harvestMetadata, scrubHistory, excludedHosts);
+        return new ShieldConfig(enabled, value, blindOtherTools, rewriteInlineMedia, blindWebSockets, harvestMetadata, scrubHistory, excludedHosts);
     }
 
     public ShieldConfig withBlindOtherTools(boolean value) {
-        return new ShieldConfig(enabled, blindProxyBrowser, value, rewriteInlineMedia, harvestMetadata, scrubHistory, excludedHosts);
+        return new ShieldConfig(enabled, blindProxyBrowser, value, rewriteInlineMedia, blindWebSockets, harvestMetadata, scrubHistory, excludedHosts);
     }
 
     public ShieldConfig withRewriteInlineMedia(boolean value) {
-        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, value, harvestMetadata, scrubHistory, excludedHosts);
+        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, value, blindWebSockets, harvestMetadata, scrubHistory, excludedHosts);
+    }
+
+    public ShieldConfig withBlindWebSockets(boolean value) {
+        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, value, harvestMetadata, scrubHistory, excludedHosts);
     }
 
     public ShieldConfig withHarvestMetadata(boolean value) {
-        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, value, scrubHistory, excludedHosts);
+        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, blindWebSockets, value, scrubHistory, excludedHosts);
     }
 
     public ShieldConfig withScrubHistory(boolean value) {
-        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, harvestMetadata, value, excludedHosts);
+        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, blindWebSockets, harvestMetadata, value, excludedHosts);
     }
 
     public ShieldConfig withExcludedHosts(Set<String> hosts) {
-        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, harvestMetadata, scrubHistory, hosts);
+        return new ShieldConfig(enabled, blindProxyBrowser, blindOtherTools, rewriteInlineMedia, blindWebSockets, harvestMetadata, scrubHistory, hosts);
     }
 }

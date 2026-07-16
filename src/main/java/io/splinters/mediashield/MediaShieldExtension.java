@@ -9,6 +9,7 @@ import io.splinters.mediashield.http.MediaHttpHandler;
 import io.splinters.mediashield.metadata.MetadataStore;
 import io.splinters.mediashield.proxy.MediaProxyHandler;
 import io.splinters.mediashield.ui.ShieldSettingsPanel;
+import io.splinters.mediashield.websocket.MediaWebSocketCreationHandler;
 
 /**
  * Entry point. Registers, in order:
@@ -33,6 +34,9 @@ public final class MediaShieldExtension implements BurpExtension {
 
         api.http().registerHttpHandler(
                 new MediaHttpHandler(configHolder, metadataStore, api.logging()));
+
+        api.proxy().registerWebSocketCreationHandler(
+                new MediaWebSocketCreationHandler(configHolder, metadataStore, api.logging()));
 
         api.userInterface().registerHttpResponseEditorProvider(new SafeViewEditorProvider());
 

@@ -46,7 +46,7 @@ memory, swap, OS thumbnail caches, or anything outside Burp's own render surface
 
 ## What it covers
 
-Two layers give complete coverage of "all media, all delivery methods":
+Three layers give complete coverage of "all media, all delivery methods":
 
 **Layer 1 — Content-Type + magic-byte swap (the backbone).**
 Any response whose body is media — detected from the `Content-Type` header **and** independently
@@ -67,9 +67,19 @@ media regardless of how the page references it.
 | Inline `<svg>` vector art / embedded raster | Layer 2 | SVG body overlaid; `<image href>` blanked |
 | `<video poster="...">` still frame | Layer 2 | poster swapped |
 | SVG served as `image/svg+xml` | Layer 2 | overlaid with orange cover |
+| Media in a WebSocket **binary** frame | Layer 3 (WS) | swapped for a format-matched orange raster |
+| Base64 media in a WebSocket **text**/JSON frame | Layer 3 (WS) | decoded, magic-checked, replaced |
 
 **Layer 2 — inline body rewrite** (`text/html`, `text/css`, `image/svg+xml`) handles the only media
 that never becomes its own response: `data:` URIs, inline SVG, and `poster` frames.
+
+**Layer 3 — WebSocket frames.** WS carries no Content-Type, so the page's own JavaScript decides how
+to decode a frame. The shield therefore substitutes a **real image in the same format** (an orange
+JPEG for a JPEG frame, orange PNG for a PNG frame) so the app renders orange rather than a broken
+image. Binary frames are format-matched; text/JSON frames are scanned for `data:` URIs and for raw
+base64 that *decodes to* image magic bytes (so tokens/IDs are never touched). Only server→client
+frames are altered; the same received/to-be-sent split keeps originals in WebSockets history (and
+No-Retention Mode scrubs those too).
 
 ### Where it blinds (every human-facing render surface)
 
@@ -93,6 +103,7 @@ that never becomes its own response: `data:` URIs, inline SVG, and `poster` fram
 | Blind the browser (Proxy path) | on | swap client-facing copy; original kept in history |
 | Blind Repeater / Logger render | on | belt-and-braces; those tools' stored copy is the placeholder |
 | Neutralise inline `data:` / inline SVG | on | Layer 2 rewriting |
+| Blind media in WebSocket frames | on | server→client; binary (format-matched) + base64-in-JSON |
 | Harvest metadata | on | extract EXIF/GPS/dimensions/hashes into the table |
 | **No-Retention Mode** | **off** | also scrub originals from history — raw bytes never persist to disk |
 | Excluded hosts | empty | hosts left entirely untouched (e.g. noisy analytics pixels) |
@@ -107,7 +118,7 @@ a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises C
 
 ## Install
 
-1. Grab the prebuilt jar — committed at [`dist/burp-media-shield-1.0.0.jar`](dist/burp-media-shield-1.0.0.jar)
+1. Grab the prebuilt jar — committed at [`dist/burp-media-shield-1.1.0.jar`](dist/burp-media-shield-1.1.0.jar)
    or attached to the [latest release](../../releases/latest) — or build it yourself (see below).
 2. Burp → **Extensions → Installed → Add** → Extension type **Java** → select the jar.
 3. Confirm the **Media Shield** tab appears and the output log shows the load banner.
@@ -118,7 +129,7 @@ a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises C
 **With Gradle** (canonical; bundles + relocates dependencies via the Shadow plugin):
 
 ```bash
-gradle build          # -> build/libs/burp-media-shield-1.0.0.jar
+gradle build          # -> build/libs/burp-media-shield-1.1.0.jar
 ```
 
 **Without Gradle** (no install needed; plain `javac` + `jar`):
@@ -133,7 +144,11 @@ jar.
 
 ## Limitations
 
-- WebSocket-delivered media and WebRTC streams are out of scope (not classic HTTP responses).
+- WebSocket media **is** blinded (binary frames + base64-in-JSON, server→client). Remaining WS
+  caveats: media split across continuation frames is only partially neutralised (the leading
+  fragment); MSE/streamed video segments break rather than show orange; and app-specific binary
+  wrappers around media may evade magic-byte detection. WebRTC media (SRTP — not carried over the
+  WebSocket proxy) remains out of scope.
 - HTML rewriting (Layer 2) is regex-based and best-effort; it is a supplement to the Layer-1 swap,
   which is the primary defence and is not regex-dependent.
 - `<canvas>` pixels drawn by JavaScript from already-blinded sources are inherently blank/orange;

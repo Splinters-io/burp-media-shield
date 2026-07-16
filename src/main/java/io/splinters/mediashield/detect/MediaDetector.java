@@ -139,6 +139,28 @@ public final class MediaDetector {
         return MediaKind.NONE;
     }
 
+    /**
+     * Concrete raster image format from magic bytes, as a lowercase token ("png", "jpeg", "gif",
+     * "bmp", "webp", "tiff", "ico", "heic", "avif") or {@code null} if not a recognised raster.
+     * Used by WebSocket blinding, where there is no Content-Type header and the replacement must be
+     * a real image in the SAME format the page's JavaScript expects.
+     */
+    public static String imageFormat(byte[] body) {
+        if (body == null || body.length < 12) {
+            return null;
+        }
+        if (starts(body, 0xFF, 0xD8, 0xFF)) return "jpeg";
+        if (starts(body, 0x89, 0x50, 0x4E, 0x47)) return "png";
+        if (starts(body, 0x47, 0x49, 0x46, 0x38)) return "gif";
+        if (starts(body, 0x42, 0x4D)) return "bmp";
+        if (ascii(body, 0, "RIFF") && ascii(body, 8, "WEBP")) return "webp";
+        if (starts(body, 0x49, 0x49, 0x2A, 0x00) || starts(body, 0x4D, 0x4D, 0x00, 0x2A)) return "tiff";
+        if (starts(body, 0x00, 0x00, 0x01, 0x00)) return "ico";
+        if (ascii(body, 4, "ftypheic") || ascii(body, 4, "ftypheix") || ascii(body, 4, "ftypmif1")) return "heic";
+        if (ascii(body, 4, "ftypavif")) return "avif";
+        return null;
+    }
+
     private static boolean starts(byte[] body, int... prefix) {
         if (body.length < prefix.length) {
             return false;
