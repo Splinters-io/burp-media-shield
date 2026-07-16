@@ -5,11 +5,9 @@ bright-orange placeholders in every view a tester looks at, so an assessment of 
 adult content can be carried out **tastefully** — without explicit material ever being *displayed*
 — while the underlying bytes, headers and metadata remain available for writing findings.
 
-Built for legitimate, authorised engagements (bug bounty / VDP / commercial pentest).
-
 ---
 
-## ⚠️ Read this first — data handling & forensics
+##  Read this first — data handling & forensics
 
 Media Shield changes what is **rendered**. By default it does **not** change what is **stored**.
 That distinction matters legally and forensically:
@@ -31,7 +29,7 @@ That distinction matters legally and forensically:
 
 ### If the material could be illegal (e.g. CSAM risk on an adult platform)
 
-Do **not** rely on the default retention behaviour. Enable **No-Retention Mode** (see below), which
+Do not rely on the default retention behaviour. Enable **No-Retention Mode** (see below), which
 scrubs the original from history so the raw asset never lands in the project file — only text
 metadata (hashes, dimensions, EXIF) is kept, in memory. Even then:
 
@@ -41,8 +39,8 @@ metadata (hashes, dimensions, EXIF) is kept, in memory. Even then:
   artifact to escalate — not the material itself.
 - Get the retention posture agreed **in writing** with the client before testing.
 
-**This tool is a safety and dignity aid. It is not a legal control and does not sanitise disk,
-memory, swap, OS thumbnail caches, or anything outside Burp's own render surfaces.**
+This tool is a safety and dignity aid. It is not a legal control and does not sanitise disk,
+memory, swap, OS thumbnail caches, or anything outside Burp's own render surfaces.
 
 ---
 
@@ -75,15 +73,15 @@ that never becomes its own response: `data:` URIs, inline SVG, and `poster` fram
 
 ### Where it blinds (every human-facing render surface)
 
-- **Burp's embedded browser / any browser proxied through Burp** — blinded in-flight (Proxy path).
-- **Message-editor Render tab** in Proxy history, Repeater, Logger.
-- Provides a text-only **"Media Shield 🛡"** editor tab as the safe place to inspect.
+- Burp's embedded browser / any browser proxied through Burp — blinded in-flight (Proxy path).
+- Message-editor Render tab in Proxy history, Repeater, Logger.
+- Provides a text-only "Media Shield " editor tab as the safe place to inspect.
 
-### Where it deliberately does **not** touch bytes
+### Where it deliberately does not touch bytes
 
-- **Scanner / DAST, Intruder, Extensions** — left pristine so automated analysis sees real bytes
+- Scanner / DAST, Intruder, Extensions — left pristine so automated analysis sees real bytes
   (media-parsing bugs, SSRF-via-image-fetch, upload polyglots, payload reflection).
-- **Proxy history "original" response** — retained by default (see retention warning above).
+- Proxy history "original" response — retained by default (see retention warning above).
 
 ---
 
