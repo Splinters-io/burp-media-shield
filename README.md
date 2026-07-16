@@ -107,7 +107,8 @@ a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises C
 
 ## Install
 
-1. Build (or grab the release jar) → `build/libs/burp-media-shield-1.0.0.jar`.
+1. Grab the prebuilt jar — committed at [`dist/burp-media-shield-1.0.0.jar`](dist/burp-media-shield-1.0.0.jar)
+   or attached to the [latest release](../../releases/latest) — or build it yourself (see below).
 2. Burp → **Extensions → Installed → Add** → Extension type **Java** → select the jar.
 3. Confirm the **Media Shield** tab appears and the output log shows the load banner.
 4. Set your retention posture on the tab **before** you start browsing.
