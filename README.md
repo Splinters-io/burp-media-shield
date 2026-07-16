@@ -7,7 +7,7 @@ adult content can be carried out **tastefully** — without explicit material ev
 
 ---
 
-##  Read this first — data handling & forensics
+## Read this first — data handling & forensics
 
 Media Shield changes what is **rendered**. By default it does **not** change what is **stored**.
 That distinction matters legally and forensically:
@@ -24,7 +24,7 @@ That distinction matters legally and forensically:
   and the native Render tab / embedded browser will display the originals normally.
 - **The native "Render" tab on the *original* response is not sealable.** Media Shield cannot delete
   Burp's built-in Render tab. On a *retained* original an analyst who deliberately clicks Render
-  will see the real image. Use the provided **"Media Shield 🛡" metadata tab** instead (it is
+  will see the real image. Use the provided **"Media Shield" metadata tab** instead (it is
   text-only and never draws a pixel).
 
 ### If the material could be illegal (e.g. CSAM risk on an adult platform)
@@ -75,7 +75,7 @@ that never becomes its own response: `data:` URIs, inline SVG, and `poster` fram
 
 - Burp's embedded browser / any browser proxied through Burp — blinded in-flight (Proxy path).
 - Message-editor Render tab in Proxy history, Repeater, Logger.
-- Provides a text-only "Media Shield " editor tab as the safe place to inspect.
+- Provides a text-only "Media Shield" editor tab as the safe place to inspect.
 
 ### Where it deliberately does not touch bytes
 
