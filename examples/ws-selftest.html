@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Media Shield — WebSocket self-test</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; }
+  .muted { opacity: .75; }
+  input[type=text] { width: 22rem; padding: .35rem .5rem; font: inherit; }
+  button { padding: .45rem .8rem; font: inherit; cursor: pointer; margin-right: .4rem; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #status { font-weight: 700; }
+  .status-ok { color: #128a12; } .status-bad { color: #c0392b; }
+  .panes { display: flex; gap: 1.5rem; margin: 1.2rem 0; flex-wrap: wrap; }
+  figure { margin: 0; }
+  figcaption { font-weight: 600; margin-bottom: .4rem; }
+  img { width: 320px; height: 200px; object-fit: contain; border: 1px solid #8888; background: #8881; display: block; }
+  pre { background: #8881; padding: .8rem; border-radius: 6px; max-height: 220px; overflow: auto; font-size: 12px; }
+  .note { border-left: 4px solid #FF6A00; padding: .6rem .9rem; background: #ff6a0018; border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+<h1>Media Shield — WebSocket self-test</h1>
+
+<p class="note">
+  Open this page <strong>in Burp's browser</strong> (or any browser proxied through Burp) with the
+  Media Shield extension loaded. You send a locally-generated test image over a WebSocket to an
+  <em>echo</em> server; the server sends it straight back (server&nbsp;→&nbsp;client), which is the
+  direction the shield blinds. <strong>Shield ON&nbsp;→ the "Received" pane shows an orange
+  placeholder. Shield OFF&nbsp;→ it shows the original test image.</strong> The "Sent" pane is drawn
+  locally and is never touched, so it always shows the true image for comparison.
+</p>
+
+<p>
+  <label>WebSocket echo URL
+    <input id="url" type="text" value="wss://echo.websocket.org">
+  </label>
+  <button id="connect">Connect</button>
+  <span id="status" class="status-bad">disconnected</span>
+</p>
+<p class="muted">
+  Any echo server works. For an offline/engagement machine, point this at a local echo instead of a
+  public one — but note browsers often bypass the proxy for <code>localhost</code>/<code>127.0.0.1</code>,
+  in which case Burp (and the shield) never sees the traffic. Use a real hostname routed through Burp.
+</p>
+
+<p>
+  <button id="btnBinary" disabled>1 · Send binary image frame</button>
+  <button id="btnData" disabled>2 · Send data: URI in JSON</button>
+  <button id="btnRaw" disabled>3 · Send raw base64 in JSON</button>
+</p>
+
+<div class="panes">
+  <figure><figcaption>Sent (local original — always true)</figcaption><img id="sent" alt="sent"></figure>
+  <figure><figcaption>Received &amp; rendered (orange if shielded)</figcaption><img id="recv" alt="received"></figure>
+</div>
+
+<pre id="log"></pre>
+<canvas id="canvas" width="320" height="200" hidden></canvas>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+  let ws = null;
+
+  function log(msg) {
+    const t = new Date().toISOString().substr(11, 12);
+    logEl.textContent += `[${t}] ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Draw a distinctive, obviously-not-orange test image locally.
+  function makeTestImage() {
+    const c = $('canvas'), g = c.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, c.width, c.height);
+    grad.addColorStop(0, '#0033cc'); grad.addColorStop(1, '#00aa66');
+    g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#ffffff'; g.font = 'bold 22px monospace'; g.textAlign = 'center';
+    g.fillText('TEST MEDIA', c.width / 2, c.height / 2 - 8);
+    g.font = '13px monospace';
+    g.fillText('orange = shielded', c.width / 2, c.height / 2 + 18);
+    return c.toDataURL('image/png');
+  }
+
+  function setButtons(enabled) {
+    ['btnBinary', 'btnData', 'btnRaw'].forEach(id => $(id).disabled = !enabled);
+  }
+
+  function renderReceived(src, how) {
+    $('recv').src = src;
+    log(`rendered received frame (${how}) — if it's an orange box, the shield is working`);
+  }
+
+  function handleIncoming(data) {
+    if (typeof data === 'string') {
+      // Try to treat it as our JSON envelope; ignore server greetings etc.
+      let obj;
+      try { obj = JSON.parse(data); } catch (e) { log(`text frame (non-JSON, ignored): ${data.slice(0, 80)}`); return; }
+      if (!obj || !obj.data) { log('text frame: no media field'); return; }
+      const src = obj.data.startsWith('data:')
+        ? obj.data
+        : `data:image/${obj.fmt || 'png'};base64,${obj.data}`;
+      renderReceived(src, obj.data.startsWith('data:') ? 'data: URI in JSON' : 'raw base64 in JSON');
+    } else {
+      // Binary frame (Blob) — the browser decides the type; render via object URL.
+      const url = URL.createObjectURL(data);
+      renderReceived(url, 'binary frame');
+    }
+  }
+
+  $('connect').addEventListener('click', () => {
+    const url = $('url').value.trim();
+    if (ws) { try { ws.close(); } catch (e) {} }
+    log(`connecting to ${url} ...`);
+    ws = new WebSocket(url);
+    ws.binaryType = 'blob';
+    ws.onopen = () => {
+      $('status').textContent = 'connected'; $('status').className = 'status-ok';
+      setButtons(true); log('connected — send a frame with the buttons above');
+    };
+    ws.onmessage = (ev) => handleIncoming(ev.data);
+    ws.onclose = () => {
+      $('status').textContent = 'disconnected'; $('status').className = 'status-bad';
+      setButtons(false); log('connection closed');
+    };
+    ws.onerror = () => log('websocket error (see console / Burp WebSockets history)');
+  });
+
+  $('btnBinary').addEventListener('click', () => {
+    const dataUrl = makeTestImage();
+    $('sent').src = dataUrl;
+    $('canvas').toBlob((blob) => {
+      ws.send(blob);
+      log(`sent binary image frame (${blob.size} bytes, image/png) — expecting the echo back`);
+    }, 'image/png');
+  });
+
+  $('btnData').addEventListener('click', () => {
+    const dataUrl = makeTestImage();
+    $('sent').src = dataUrl;
+    ws.send(JSON.stringify({ type: 'photo', data: dataUrl }));
+    log('sent JSON with a data: URI — expecting the echo back');
+  });
+
+  $('btnRaw').addEventListener('click', () => {
+    const dataUrl = makeTestImage();
+    $('sent').src = dataUrl;
+    const base64 = dataUrl.split(',')[1];
+    ws.send(JSON.stringify({ type: 'photo', fmt: 'png', data: base64 }));
+    log('sent JSON with raw (unprefixed) base64 — expecting the echo back');
+  });
+
+  log('ready. 1) Connect  2) send a frame  3) compare the two panes.');
+})();
+</script>
+</body>
+</html>

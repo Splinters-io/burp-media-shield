@@ -159,6 +159,14 @@ Two harnesses, no Gradle/JUnit required:
   that real media over a real WebSocket comes out blinded, with metadata harvested. (Burp's own
   `ProxyMessageHandler` dispatch is thin glue over this and is verified by loading the jar in Burp.)
 
+### In-Burp live check
+
+Open [`examples/ws-selftest.html`](examples/ws-selftest.html) in Burp's browser (extension loaded).
+It sends a locally-drawn test image to a WebSocket echo server and renders the echo (server→client)
+back. **Shield ON → the "Received" pane is an orange placeholder; Shield OFF → it's the original
+image.** Three buttons exercise the binary-frame, `data:`-URI-in-JSON, and raw-base64-in-JSON paths.
+This is the one check that exercises Burp's actual proxy dispatch end-to-end in the live browser.
+
 ## Limitations
 
 - WebSocket media **is** blinded (binary frames + base64-in-JSON, server→client). Remaining WS
