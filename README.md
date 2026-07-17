@@ -27,7 +27,7 @@ That distinction matters legally and forensically:
   will see the real image. Use the provided **"Media Shield" metadata tab** instead (it is
   text-only and never draws a pixel).
 
-### If the material could be illegal (e.g. CSAM risk on an adult platform)
+### If the material could be illegal (e.g. CSAM risk on an adult platform) - don't do any vigilante bullshit. also the data is still written to the computer requesting it, forensically, it's there, all this offers you a safe way to navigate structures with the best efforts to suppress any media hitting your eyes/mind/heart.
 
 Do not rely on the default retention behaviour. Enable **No-Retention Mode** (see below), which
 scrubs the original from history so the raw asset never lands in the project file — only text
