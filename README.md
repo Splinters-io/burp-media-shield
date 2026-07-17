@@ -142,6 +142,23 @@ Match the `montoya-api` version in `build.gradle` to (or below) your Burp releas
 Montoya API is provided by Burp at runtime; `metadata-extractor` + `xmpcore` are bundled into the
 jar.
 
+## Tests
+
+```bash
+tests/run.sh
+```
+
+Two harnesses, no Gradle/JUnit required:
+
+- **`tests/LogicTests.java`** — detection (incl. type-confusion), placeholder generation, `data:`/
+  base64 rewriting, CSV export (quoting + injection safety), and metadata extraction.
+- **`tests/RealWebSocketTest.java`** — stands up a **real RFC-6455 WebSocket server**, connects with
+  the JDK's real `java.net.http.WebSocket` client, pushes a real JPEG (binary frame) and a JSON
+  frame carrying a base64 PNG, runs each through the shipped `WsMediaRewriter` exactly as
+  `MediaWebSocketHandler` does, then **decodes the output and asserts the pixels are orange** — proof
+  that real media over a real WebSocket comes out blinded, with metadata harvested. (Burp's own
+  `ProxyMessageHandler` dispatch is thin glue over this and is verified by loading the jar in Burp.)
+
 ## Limitations
 
 - WebSocket media **is** blinded (binary frames + base64-in-JSON, server→client). Remaining WS
