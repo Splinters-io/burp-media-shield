@@ -22,8 +22,7 @@ That distinction matters legally and forensically:
 - **Technically "downloaded", not "viewed" — and that is an argument, not a defence.** The plugin
   blinds every render surface, but the bytes exist on disk and in memory and **could be rendered by
   any other tool**, or by Burp itself **if the project file is reopened without this extension
-  loaded**. In some jurisdictions downloading is itself the offence (in the UK, downloading an
-  indecent image of a child counts as "making" it). Not legal advice — get some.
+  loaded**. In some jurisdictions downloading is itself the offence. Not legal advice — get some.
 - **Opening the saved project without the plugin re-exposes everything.** The shield is a live,
   in-process transform. Load the `.burp` file on a machine that doesn't have Media Shield installed
   and the native Render tab / embedded browser will display the originals normally.
@@ -36,7 +35,7 @@ That distinction matters legally and forensically:
   **"Media Shield" metadata tab** (text-only, never draws a pixel) to work out what a request is
   before you look at it. If you can't say for certain it's a captcha, it isn't one.
 
-### If the material could be illegal (e.g. CSAM risk on an adult platform) - don't do any vigilante bullshit. also the data is still written to the computer requesting it, forensically, it's there, all this offers you a safe way to navigate structures with the best efforts to suppress any media hitting your eyes/mind/heart.
+### If the material could be illegal - don't do any vigilante bullshit. also the data is still written to the computer requesting it, forensically, it's there, all this offers you a safe way to navigate structures with the best efforts to suppress any media hitting your eyes/mind/heart.
 
 Do not rely on the default retention behaviour. Enable **No-Retention Mode** (see below), which
 scrubs the original from history so the raw asset never lands in the project file — only text
