@@ -15,23 +15,39 @@ That distinction matters legally and forensically:
 - **The material is still downloaded.** Burp fetches every asset over the wire. In the default
   configuration the **original bytes are retained in Proxy history and written to the Burp project
   file on disk** (`.burp` project / state file). They are *not rendered*, but they are *present*.
-- **Technically "downloaded", not "viewed".** A defensible position is that the tester never
-  *viewed* the material — the plugin blinded every render surface — but the bytes exist on disk and
-  in memory and **could be rendered by any other tool**, or by Burp itself **if the project file is
-  reopened without this extension loaded**.
+- **Technically "downloaded", not "viewed" — and that is an argument, not a defence.** The plugin
+  blinds every render surface, but the bytes exist on disk and in memory and **could be rendered by
+  any other tool**, or by Burp itself **if the project file is reopened without this extension
+  loaded**. In some jurisdictions downloading is itself the offence (in the UK, downloading an
+  indecent image of a child counts as "making" it). Not legal advice — get some.
 - **Opening the saved project without the plugin re-exposes everything.** The shield is a live,
   in-process transform. Load the `.burp` file on a machine that doesn't have Media Shield installed
   and the native Render tab / embedded browser will display the originals normally.
-- **The native "Render" tab on the *original* response is not sealable.** Media Shield cannot delete
-  Burp's built-in Render tab. On a *retained* original an analyst who deliberately clicks Render
-  will see the real image. Use the provided **"Media Shield" metadata tab** instead (it is
-  text-only and never draws a pixel).
+- **The native "Render" tab on the *original* response is deliberately left working.** It is the
+  escape hatch for captchas — a captcha is an image, and an orange block can't be solved. On a
+  *retained* original, clicking Render shows **the real content**, and Render has no idea what it
+  is showing you. That is only safe when the captcha is obviously named and you understand the
+  site's architecture. A captcha served from `/img/a8f3e1.jpg` looks like everything else on the
+  platform. **If in doubt, stay away from the Render tab.** Map the site first, and use the
+  **"Media Shield" metadata tab** (text-only, never draws a pixel) to work out what a request is
+  before you look at it. If you can't say for certain it's a captcha, it isn't one.
 
 ### If the material could be illegal (e.g. CSAM risk on an adult platform) - don't do any vigilante bullshit. also the data is still written to the computer requesting it, forensically, it's there, all this offers you a safe way to navigate structures with the best efforts to suppress any media hitting your eyes/mind/heart.
 
 Do not rely on the default retention behaviour. Enable **No-Retention Mode** (see below), which
 scrubs the original from history so the raw asset never lands in the project file — only text
-metadata (hashes, dimensions, EXIF) is kept, in memory. Even then:
+metadata (hashes, dimensions, EXIF) is kept, in memory. That also leaves the Render tab nothing to
+show.
+
+**No-Retention Mode is peace of mind, not forensic safety.** If it reached Burp, it crossed a
+network and landed on your box: it was in memory, it passed through your network stack, and a
+capture anywhere along the path has it. Scrubbing Proxy history afterwards changes none of that,
+and it is not evidence the material was never on your machine. What it does is stop you stumbling
+over it again later, in your own project file, weeks into writing the report. It's about not having
+to unsee things.
+
+If you think you've hit something illegal: **stop**. Don't open it, don't save it, don't go digging.
+Record the URL and hash and escalate. Also:
 
 - Treat the engagement host, disk and project file as sensitive; use full-disk encryption.
 - Follow your firm's evidence-handling / unlawful-content escalation policy. A **hash** of suspect
@@ -105,7 +121,7 @@ No-Retention Mode scrubs those too).
 | Neutralise inline `data:` / inline SVG | on | Layer 2 rewriting |
 | Blind media in WebSocket frames | on | server→client; binary (format-matched) + base64-in-JSON |
 | Harvest metadata | on | extract EXIF/GPS/dimensions/hashes into the table |
-| **No-Retention Mode** | **off** | also scrub originals from history — raw bytes never persist to disk |
+| **No-Retention Mode** | **off** | also scrub originals from history — raw bytes never reach the project file (peace of mind, not forensic safety — see above) |
 | Excluded hosts | empty | hosts left entirely untouched (e.g. noisy analytics pixels) |
 
 The tab also shows live counters and a **table of harvested media** (URL, declared vs. sniffed type,
