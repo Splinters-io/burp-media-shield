@@ -61,7 +61,7 @@ public final class MediaDetector {
         if (starts(body, 0x47, 0x49, 0x46, 0x38)) {
             return MediaKind.IMAGE;                                    // GIF8
         }
-        if (starts(body, 0x42, 0x4D)) {
+        if (isBmp(body)) {
             return MediaKind.IMAGE;                                    // BMP
         }
         if (ascii(body, 0, "RIFF") && ascii(body, 8, "WEBP")) {
@@ -152,13 +152,23 @@ public final class MediaDetector {
         if (starts(body, 0xFF, 0xD8, 0xFF)) return "jpeg";
         if (starts(body, 0x89, 0x50, 0x4E, 0x47)) return "png";
         if (starts(body, 0x47, 0x49, 0x46, 0x38)) return "gif";
-        if (starts(body, 0x42, 0x4D)) return "bmp";
+        if (isBmp(body)) return "bmp";
         if (ascii(body, 0, "RIFF") && ascii(body, 8, "WEBP")) return "webp";
         if (starts(body, 0x49, 0x49, 0x2A, 0x00) || starts(body, 0x4D, 0x4D, 0x00, 0x2A)) return "tiff";
         if (starts(body, 0x00, 0x00, 0x01, 0x00)) return "ico";
         if (ascii(body, 4, "ftypheic") || ascii(body, 4, "ftypheix") || ascii(body, 4, "ftypmif1")) return "heic";
         if (ascii(body, 4, "ftypavif")) return "avif";
         return null;
+    }
+
+    /**
+     * "BM" alone is two bytes, which any text starting "BM" and roughly one base64 token in 4,096
+     * would match. Real BMPs also carry four reserved bytes at offset 6 that are always zero, so
+     * requiring them keeps text bodies and base64-scanned JSON from being mistaken for images.
+     */
+    private static boolean isBmp(byte[] body) {
+        return starts(body, 0x42, 0x4D) && body.length >= 10
+                && body[6] == 0 && body[7] == 0 && body[8] == 0 && body[9] == 0;
     }
 
     private static boolean starts(byte[] body, int... prefix) {

@@ -71,9 +71,7 @@ public final class MediaHttpHandler implements HttpHandler {
 
             RewriteResult result = new ResponseRewriter(config).apply(responseReceived, url, method);
 
-            if (result.metadata() != null) {
-                metadataStore.record(result.metadata());
-            }
+            result.metadata().forEach(metadataStore::record);
             if (result.changed()) {
                 metadataStore.incrementShielded();
                 return ResponseReceivedAction.continueWith(result.response());

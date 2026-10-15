@@ -65,7 +65,7 @@ memory, swap, OS thumbnail caches, or anything outside Burp's own render surface
 
 ## What it covers
 
-Three layers give complete coverage of "all media, all delivery methods":
+Three layers, each aimed at a different way media reaches the page:
 
 **Layer 1 — Content-Type + magic-byte swap (the backbone).**
 Any response whose body is media — detected from the `Content-Type` header **and** independently
@@ -80,17 +80,23 @@ media regardless of how the page references it.
 | Remote `<img>` / `<video>` / `<audio>` (URL) | Layer 1 | fetched as its own response |
 | CSS `background-image: url(...)` (remote) | Layer 1 | image fetched separately |
 | Different-domain CDN / media host | Layer 1 | keyed off content, not host |
-| HLS `.m3u8` / DASH `.mpd` / `.ts` segments | Layer 1 | manifests + segments both classed as video |
+| HLS `.m3u8` / DASH `.mpd` / `.ts` segments | Layer 1 | by Content-Type; `.ts` has no magic-byte check |
 | `<img>` served with a wrong/spoofed type | Layer 1 | magic-byte sniff catches it |
-| Inline `data:` base64 URIs (img/video/audio) | Layer 2 | rewritten in HTML/CSS bodies |
+| Inline `data:` base64 URIs (img/video/audio) | Layer 2 | rewritten in HTML, CSS, JSON, JS, text and XML bodies |
+| Raw base64 media in a JSON / JS / HTML / text body | Layer 2 | decoded, magic-checked, replaced (e.g. an API returning thumbnails) |
 | Inline `<svg>` vector art / embedded raster | Layer 2 | SVG body overlaid; `<image href>` blanked |
 | `<video poster="...">` still frame | Layer 2 | poster swapped |
 | SVG served as `image/svg+xml` | Layer 2 | overlaid with orange cover |
 | Media in a WebSocket **binary** frame | Layer 3 (WS) | swapped for a format-matched orange raster |
 | Base64 media in a WebSocket **text**/JSON frame | Layer 3 (WS) | decoded, magic-checked, replaced |
 
-**Layer 2 — inline body rewrite** (`text/html`, `text/css`, `image/svg+xml`) handles the only media
-that never becomes its own response: `data:` URIs, inline SVG, and `poster` frames.
+**Layer 2 — inline body rewrite** handles media that never becomes its own response. It runs on
+every text body the page can read: HTML, XHTML, CSS, JSON (incl. `+json` types), JavaScript,
+`text/plain` and XML. In all of them it replaces media `data:` URIs and raw base64 that *decodes to*
+image magic bytes, so an API returning `{"thumb":"/9j/4AAQ..."}` for the page to build an `<img>`
+from is blinded too; other base64 (tokens, IDs) is left byte-for-byte. In HTML it also blanks
+`poster` frames and inline SVG `<image href>`. SVG served as `image/svg+xml` is overlaid with an
+orange cover.
 
 **Layer 3 — WebSocket frames.** WS carries no Content-Type, so the page's own JavaScript decides how
 to decode a frame. The shield therefore substitutes a **real image in the same format** (an orange
@@ -121,7 +127,7 @@ No-Retention Mode scrubs those too).
 | Shield ENABLED | on | master switch |
 | Blind the browser (Proxy path) | on | swap client-facing copy; original kept in history |
 | Blind Repeater / Logger render | on | belt-and-braces; those tools' stored copy is the placeholder |
-| Neutralise inline `data:` / inline SVG | on | Layer 2 rewriting |
+| Neutralise inline `data:` / inline SVG | on | Layer 2 rewriting (data: URIs + raw base64 media in text bodies) |
 | Blind media in WebSocket frames | on | server→client; binary (format-matched) + base64-in-JSON |
 | Harvest metadata | on | extract EXIF/GPS/dimensions/hashes into the table |
 | **No-Retention Mode** | **off** | also scrub originals from history — raw bytes never reach the project file (peace of mind, not forensic safety — see above) |
@@ -137,7 +143,7 @@ a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises C
 
 ## Install
 
-1. Grab the prebuilt jar — committed at [`dist/burp-media-shield-1.1.0.jar`](dist/burp-media-shield-1.1.0.jar)
+1. Grab the prebuilt jar — committed at [`dist/burp-media-shield-1.2.0.jar`](dist/burp-media-shield-1.2.0.jar)
    or attached to the [latest release](../../releases/latest) — or build it yourself (see below).
 2. Burp → **Extensions → Installed → Add** → Extension type **Java** → select the jar.
 3. Confirm the **Media Shield** tab appears and the output log shows the load banner.
@@ -148,7 +154,7 @@ a file for reporting/evidence. The exporter is RFC-4180 quoted and neutralises C
 **With Gradle** (canonical; bundles + relocates dependencies via the Shadow plugin):
 
 ```bash
-gradle build          # -> build/libs/burp-media-shield-1.1.0.jar
+gradle build          # -> build/libs/burp-media-shield-1.2.0.jar
 ```
 
 **Without Gradle** (no install needed; plain `javac` + `jar`):
@@ -188,15 +194,25 @@ This is the one check that exercises Burp's actual proxy dispatch end-to-end in 
 
 ## Limitations
 
-- WebSocket media **is** blinded (binary frames + base64-in-JSON, server→client). Remaining WS
-  caveats: media split across continuation frames is only partially neutralised (the leading
-  fragment); MSE/streamed video segments break rather than show orange; and app-specific binary
-  wrappers around media may evade magic-byte detection. WebRTC media (SRTP — not carried over the
-  WebSocket proxy) remains out of scope.
-- HTML rewriting (Layer 2) is regex-based and best-effort; it is a supplement to the Layer-1 swap,
-  which is the primary defence and is not regex-dependent.
-- `<canvas>` pixels drawn by JavaScript from already-blinded sources are inherently blank/orange;
-  canvas drawn from bytes obtained by non-media requests is not intercepted.
+Checked against the code, most consequential first:
+
+- **Media the page's JavaScript decodes itself is not seen.** An encrypted or custom-encoded payload
+  served as `application/octet-stream` and turned into a `blob:` URL (or drawn to a `<canvas>`) has
+  no media type and no recognisable magic bytes, so nothing intercepts it.
+- **Magic-byte detection is fixed-offset.** Signatures are checked at the start of the body (first
+  12 bytes). Media wrapped in an app-specific container, or prefixed with other bytes, evades it.
+  MPEG-TS (`.ts`) segments have no magic-byte check and are only caught when served as `video/mp2t`.
+  Bodies under 12 bytes are never sniffed, and only the ID3 and `FF FB` / `FF F3` MP3 headers are
+  recognised. Anything with a correct `image/*`, `video/*` or `audio/*` Content-Type is still caught.
+- **Responses with no Content-Type are not body-scanned for inline media.** Their bodies are still
+  magic-byte checked as a whole.
+- **Video and audio break rather than show orange.** A swapped video segment, MSE buffer or WS video
+  frame fails to decode; nothing plays, but there is no orange frame either.
+- **WebSocket fragmentation is untested.** The handler rewrites whole messages as Burp delivers them;
+  how Burp presents fragmented (continuation-frame) messages to extensions is not covered by tests.
+- **WebRTC media is out of scope.** It travels over SRTP/UDP and never passes through Burp's proxy.
+- **HTML rewriting is regex-based** for `poster` and inline SVG `<image href>`. `data:` URIs and raw
+  base64 are matched on their own syntax, independent of the markup around them.
 - Does not sanitise disk, swap, memory dumps, or OS-level thumbnail caches. See retention warning.
 
 ## Licence

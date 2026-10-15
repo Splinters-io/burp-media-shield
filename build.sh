@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 MONTOYA_VER="2026.4"
 MEXTRACT_VER="2.19.0"
 XMPCORE_VER="6.1.11"
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 DEPS=".deps"
 STAGE="build/stage"

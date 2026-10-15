@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.splinters'
-version = '1.1.0'
+version = '1.2.0'
 
 java {
     // Burp ships its own JRE (17+ on current releases). Target 17 for broad compatibility.
@@ -29,7 +29,7 @@ dependencies {
 }
 
 shadowJar {
-    archiveClassifier.set('')            // output: build/libs/burp-media-shield-1.1.0.jar
+    archiveClassifier.set('')            // output: build/libs/burp-media-shield-1.2.0.jar
     // Relocate the bundled library to avoid clashing with anything Burp/other extensions load.
     relocate 'com.drew', 'io.splinters.mediashield.shaded.drew'
     relocate 'com.adobe.internal.xmp', 'io.splinters.mediashield.shaded.xmp'

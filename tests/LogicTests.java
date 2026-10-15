@@ -7,6 +7,7 @@ import io.splinters.mediashield.metadata.MetadataExtractor;
 import io.splinters.mediashield.placeholder.RasterPlaceholder;
 import io.splinters.mediashield.rewrite.Base64MediaRewriter;
 import io.splinters.mediashield.rewrite.WsMediaRewriter;
+import io.splinters.mediashield.rewrite.TextBodyRewriter;
 import io.splinters.mediashield.config.ShieldConfig;
 
 import java.util.Base64;
@@ -119,6 +120,54 @@ public class LogicTests {
         // short token must NOT be touched
         Base64MediaRewriter.Result tokenR = Base64MediaRewriter.rewrite("{\"session\":\"YWJjZGVmZ2g\"}");
         check("short token untouched", !tokenR.changed());
+
+        System.out.println("== HTTP text bodies: TextBodyRewriter ==");
+        // The gap this closes: an API returns media inside JSON and the page builds the <img>.
+        TextBodyRewriter.Result jr = TextBodyRewriter.rewrite("application/json; charset=utf-8", json);
+        check("JSON raw base64 media replaced", jr.changed() && !jr.text().contains(realPngB64));
+        check("JSON surrounding fields preserved", jr.text().contains("\"caption\":\"hi\""));
+        check("JSON media extracted for metadata", jr.extractedMedia().size() == 1);
+        String jsonDataUri = "{\"thumb\":\"data:image/png;base64," + realPngB64 + "\",\"id\":7}";
+        TextBodyRewriter.Result jd = TextBodyRewriter.rewrite("application/json", jsonDataUri);
+        check("JSON data: URI replaced", jd.changed() && !jd.text().contains(realPngB64));
+        check("JSON data: URI -> svg placeholder", jd.text().contains("data:image/svg+xml;base64,"));
+        check("vendor +json is a carrier", TextBodyRewriter.isTextCarrier("application/vnd.api+json"));
+        TextBodyRewriter.Result js = TextBodyRewriter.rewrite("text/javascript",
+                "const a = \"data:image/png;base64," + realPngB64 + "\";");
+        check("JavaScript data: URI replaced", js.changed() && !js.text().contains(realPngB64));
+        TextBodyRewriter.Result pt = TextBodyRewriter.rewrite("text/plain", realPngB64);
+        check("text/plain raw base64 replaced", pt.changed());
+        // JSON state embedded in HTML (e.g. a framework's hydration blob).
+        String htmlState = "<p>x</p><script type=\"application/json\">{\"img\":\"" + realPngB64 + "\"}</script>";
+        TextBodyRewriter.Result hs = TextBodyRewriter.rewrite("text/html", htmlState);
+        check("raw base64 inside HTML replaced", hs.changed() && !hs.text().contains(realPngB64));
+        check("HTML poster still blanked", TextBodyRewriter.rewrite("text/html",
+                "<video poster=\"/p.jpg\"></video>").text().contains("data:image/svg+xml;base64,"));
+        check("octet-stream is not a carrier", !TextBodyRewriter.isTextCarrier("application/octet-stream"));
+        check("missing Content-Type is not a carrier", !TextBodyRewriter.isTextCarrier(null));
+        check("SVG is not a text carrier (handled as media)", !TextBodyRewriter.isTextCarrier("image/svg+xml"));
+        // Non-media base64 in JSON must come through byte-for-byte.
+        byte[] opaque = new byte[96];
+        for (int i = 0; i < opaque.length; i++) opaque[i] = (byte) (1 + i * 37);
+        String opaqueJson = "{\"blob\":\"" + Base64.getEncoder().encodeToString(opaque) + "\"}";
+        TextBodyRewriter.Result op = TextBodyRewriter.rewrite("application/json", opaqueJson);
+        check("non-media base64 in JSON untouched", !op.changed() && op.text().equals(opaqueJson));
+
+        System.out.println("== BMP signature ==");
+        // "BM" + non-zero reserved bytes: one base64 token in ~4,096 starts like this ("Qk...").
+        byte[] bmLike = new byte[96];
+        bmLike[0] = 0x42; bmLike[1] = 0x4D;
+        for (int i = 2; i < bmLike.length; i++) bmLike[i] = (byte) (3 + i * 11);
+        String bmToken = Base64.getEncoder().encodeToString(bmLike);
+        check("BM-prefixed token is not an image", MediaDetector.imageFormat(bmLike) == null);
+        check("BM-prefixed token in JSON untouched",
+                !TextBodyRewriter.rewrite("application/json", "{\"t\":\"" + bmToken + "\"}").changed());
+        check("text starting BM is not an image",
+                MediaDetector.classify("text/plain", "BMW owners club newsletter".getBytes()) == MediaKind.NONE);
+        ByteArrayOutputStream bbos = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "bmp", bbos);
+        check("real BMP still IMAGE", MediaDetector.fromMagicBytes(bbos.toByteArray()) == MediaKind.IMAGE);
+        check("real BMP format is bmp", "bmp".equals(MediaDetector.imageFormat(bbos.toByteArray())));
 
         System.out.println("== WebSocket: WsMediaRewriter ==");
         ByteArrayOutputStream jbos = new ByteArrayOutputStream();

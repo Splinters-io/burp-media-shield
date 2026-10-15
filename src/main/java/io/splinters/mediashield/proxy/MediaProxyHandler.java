@@ -53,9 +53,7 @@ public final class MediaProxyHandler implements ProxyResponseHandler {
             String url = interceptedResponse.initiatingRequest().url();
             String method = interceptedResponse.initiatingRequest().method();
             RewriteResult result = new ResponseRewriter(config).apply(interceptedResponse, url, method);
-            if (result.metadata() != null) {
-                metadataStore.record(result.metadata());
-            }
+            result.metadata().forEach(metadataStore::record);
             if (result.changed()) {
                 metadataStore.incrementShielded();
                 return ProxyResponseReceivedAction.continueWith(result.response());
@@ -84,9 +82,7 @@ public final class MediaProxyHandler implements ProxyResponseHandler {
 
             RewriteResult result = new ResponseRewriter(config).apply(interceptedResponse, url, method);
 
-            if (result.metadata() != null) {
-                metadataStore.record(result.metadata());
-            }
+            result.metadata().forEach(metadataStore::record);
             if (result.changed()) {
                 metadataStore.incrementShielded();
                 return ProxyResponseToBeSentAction.continueWith(result.response());

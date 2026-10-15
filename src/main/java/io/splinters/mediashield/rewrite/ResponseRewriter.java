@@ -9,6 +9,9 @@ import io.splinters.mediashield.metadata.MediaMetadata;
 import io.splinters.mediashield.metadata.MetadataExtractor;
 import io.splinters.mediashield.placeholder.OrangePlaceholder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Core shield logic over a single Montoya {@link HttpResponse}. Given the response and the
  * request context (url/method), it decides whether the body is media and returns a client-facing
@@ -49,7 +52,7 @@ public final class ResponseRewriter {
                     ? MetadataExtractor.extract(url, method, response.statusCode(), contentType, body)
                     : null;
             HttpResponse shielded = replaceWithPlaceholder(response, kind);
-            return new RewriteResult(shielded, true, metadata);
+            return RewriteResult.of(shielded, metadata);
         }
 
         // ---- SVG: it's XML; rewrite embedded rasters and cover with an orange rect. ----
@@ -61,22 +64,23 @@ public final class ResponseRewriter {
             MediaMetadata metadata = config.harvestMetadata()
                     ? MetadataExtractor.extract(url, method, response.statusCode(), contentType, body)
                     : null;
-            return new RewriteResult(shielded, true, metadata);
+            return RewriteResult.of(shielded, metadata);
         }
 
-        // ---- Text carriers: neutralise inline data: URIs / inline media (HTML & CSS). ----
-        if (config.rewriteInlineMedia() && isTextCarrier(contentType)) {
-            String original = response.bodyToString();
-            if (DataUriRewriter.containsMediaDataUri(original) || looksLikeHtml(contentType)) {
-                String rewritten = looksLikeHtml(contentType)
-                        ? HtmlMediaRewriter.rewrite(original)
-                        : DataUriRewriter.rewrite(original);
-                if (!rewritten.equals(original)) {
-                    HttpResponse shielded = response
-                            .withBody(rewritten)
-                            .withUpdatedHeader(SHIELD_HEADER, "inline-neutralised");
-                    return new RewriteResult(shielded, true, null);
+        // ---- Text carriers (HTML, CSS, JSON, JS, plain text, XML): neutralise embedded media. ----
+        if (config.rewriteInlineMedia() && TextBodyRewriter.isTextCarrier(contentType)) {
+            TextBodyRewriter.Result text = TextBodyRewriter.rewrite(contentType, response.bodyToString());
+            if (text.changed()) {
+                List<MediaMetadata> metadata = new ArrayList<>();
+                if (config.harvestMetadata()) {
+                    for (byte[] media : text.extractedMedia()) {
+                        metadata.add(MetadataExtractor.extract(url, method, response.statusCode(), null, media));
+                    }
                 }
+                HttpResponse shielded = response
+                        .withBody(text.text())
+                        .withUpdatedHeader(SHIELD_HEADER, "inline-neutralised");
+                return new RewriteResult(shielded, true, metadata);
             }
         }
 
@@ -105,21 +109,4 @@ public final class ResponseRewriter {
         return response;
     }
 
-    private static boolean isTextCarrier(String contentType) {
-        if (contentType == null) {
-            return false;
-        }
-        String ct = contentType.toLowerCase();
-        return ct.contains("text/html")
-                || ct.contains("application/xhtml")
-                || ct.contains("text/css");
-    }
-
-    private static boolean looksLikeHtml(String contentType) {
-        if (contentType == null) {
-            return false;
-        }
-        String ct = contentType.toLowerCase();
-        return ct.contains("text/html") || ct.contains("application/xhtml");
-    }
 }
