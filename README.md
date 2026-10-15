@@ -5,6 +5,10 @@ bright-orange placeholders in every view a tester looks at, so an assessment of 
 adult content can be carried out **tastefully** — without explicit material ever being *displayed*
 — while the underlying bytes, headers and metadata remain available for writing findings.
 
+**Write-up:** [Media Shield — splinters.io](https://splinters.io/story-time/media-shield) covers
+why it exists, the legal position, the Render tab escape hatch and what No-Retention Mode does and
+doesn't buy you. Read it before you point this at anything that matters.
+
 ---
 
 ## Read this first — data handling & forensics
